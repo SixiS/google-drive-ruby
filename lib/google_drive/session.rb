@@ -151,17 +151,14 @@ module GoogleDrive
         #   session.spreadsheets("title" => "hoge")
         #   session.spreadsheets("title" => "hoge", "title-exact" => "true")
         def spreadsheets(params = {})
-          query = encode_query(params)
-          doc = request(
-              :get, "https://spreadsheets.google.com/feeds/spreadsheets/private/full?#{query}")
-          result = []
-          doc.css("feed > entry").each() do |entry|
-            title = entry.css("title").text
-            url = entry.css(
-              "link[rel='http://schemas.google.com/spreadsheets/2006#worksheetsfeed']")[0]["href"]
-            result.push(Spreadsheet.new(self, url, title))
-          end
-          return result
+          url = concat_url(
+              "#{DOCS_BASE_URL}/-/spreadsheet?v=3", "?" + encode_query(params))
+          doc = request(:get, url, :auth => :writely)
+          # The API may return non-spreadsheets too when title-exact is specified.
+          # Probably a bug. For workaround, only returns Spreadsheet instances.
+          return doc.css("feed > entry").
+              map(){ |e| entry_element_to_file(e) }.
+              select(){ |f| f.is_a?(Spreadsheet) }
         end
 
         # Returns GoogleDrive::Spreadsheet with given +key+.
@@ -187,10 +184,14 @@ module GoogleDrive
         def spreadsheet_by_url(url)
           # Tries to parse it as URL of human-readable spreadsheet.
           uri = URI.parse(url)
-          if ["spreadsheets.google.com", "docs.google.com"].include?(uri.host) &&
-              uri.path =~ /\/ccc$/
-            if (uri.query || "").split(/&/).find(){ |s| s=~ /^key=(.*)$/ }
-              return spreadsheet_by_key($1)
+          if ["spreadsheets.google.com", "docs.google.com"].include?(uri.host)
+            case uri.path
+              when /\/d\/([^\/]+)/
+                return spreadsheet_by_key($1)
+              when /\/ccc$/
+                if (uri.query || "").split(/&/).find(){ |s| s=~ /^key=(.*)$/ }
+                  return spreadsheet_by_key($1)
+                end
             end
           end
           # Assumes the URL is worksheets feed URL.
@@ -399,7 +400,7 @@ module GoogleDrive
           EOS
 
           default_initial_header = {
-              "Content-Type" => "application/atom+xml",
+              "Content-Type" => "application/atom+xml;charset=utf-8",
               "X-Upload-Content-Type" => content_type,
               "X-Upload-Content-Length" => total_bytes.to_s(),
           }
@@ -463,7 +464,7 @@ module GoogleDrive
           if params[:header]
             extra_header = params[:header]
           elsif data
-            extra_header = {"Content-Type" => "application/atom+xml"}
+            extra_header = {"Content-Type" => "application/atom+xml;charset=utf-8"}
           else
             extra_header = {}
           end

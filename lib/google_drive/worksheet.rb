@@ -246,7 +246,7 @@ module GoogleDrive
             row = cell["row"].to_i()
             col = cell["col"].to_i()
             @cells[[row, col]] = cell.inner_text
-            @input_values[[row, col]] = cell["inputValue"]
+            @input_values[[row, col]] = cell["inputValue"] || cell.inner_text
             numeric_value = cell["numericValue"]
             @numeric_values[[row, col]] = numeric_value ? numeric_value.to_f() : nil
           end
@@ -274,7 +274,9 @@ module GoogleDrive
               </entry>
             EOS
 
-            @session.request(:put, edit_url, :data => xml)
+            @session.request(
+                :put, edit_url, :data => xml,
+                :header => {"Content-Type" => "application/atom+xml;charset=utf-8", "If-Match" => "*"})
 
             @meta_modified = false
             sent = true
@@ -330,7 +332,7 @@ module GoogleDrive
               EOS
 
               batch_url = concat_url(@cells_feed_url, "/batch")
-              result = @session.request(:post, batch_url, :data => xml)
+              result = @session.request(:post, batch_url, :data => xml, :header => {"Content-Type" => "application/atom+xml;charset=utf-8", "If-Match" => "*"})
               for entry in result.css("atom|entry")
                 interrupted = entry.css("batch|interrupted")[0]
                 if interrupted
