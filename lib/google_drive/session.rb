@@ -303,21 +303,10 @@ module GoogleDrive
               'title' => title,
               "mimeType" => "application/vnd.google-apps.spreadsheet"
             }
-            tempfile = Tempfile.new(title)
-            tempfile.rewind
-            media = Google::APIClient::UploadIO.new(tempfile,
-                                            "application/vnd.google-apps.spreadsheet",
-                                            title)
             result = client.execute(
               :api_method => drive.files.insert,
-              :body_object => metadata,
-              :media => media,
-              :parameters => {
-                'uploadType' => 'multipart'
-              }
+              :body_object => metadata
             )
-            tempfile.close
-            tempfile.unlink
             if result.status == 200
               ss_url = spreadsheets({"title" => title, "title-exact" => "true"})[0].worksheets_feed_url
               return Spreadsheet.new(self, ss_url, title)
