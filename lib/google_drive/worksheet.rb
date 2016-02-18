@@ -318,7 +318,7 @@ module GoogleDrive
                    xmlns:gs='http://schemas.google.com/spreadsheets/2006'>
               <title>#{h(new_title)}</title>
               <gs:rowCount>#{h(row_count)}</gs:rowCount>
-              <gs:colCount>#{h(self.max_cols)}</gs:colCount>
+              <gs:colCount>#{h(col_count)}</gs:colCount>
             </entry>
           EOS
 
