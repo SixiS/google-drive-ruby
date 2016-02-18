@@ -310,6 +310,26 @@ module GoogleDrive
           return true
         end
 
+        def update_meta!(new_title, row_count, col_count)
+          self.title = new_title
+          edit_url = @worksheet_feed_entry.css("link[rel='edit']")[0]["href"]
+          xml = <<-"EOS"
+            <entry xmlns='http://www.w3.org/2005/Atom'
+                   xmlns:gs='http://schemas.google.com/spreadsheets/2006'>
+              <title>#{h(new_title)}</title>
+              <gs:rowCount>#{h(row_count)}</gs:rowCount>
+              <gs:colCount>#{h(self.max_cols)}</gs:colCount>
+            </entry>
+          EOS
+
+          result = @session.request(
+              :put, edit_url, :data => xml,
+              :header => {"Content-Type" => "application/atom+xml;charset=utf-8", "If-Match" => "*"})
+          set_worksheet_feed_entry(result.root)
+
+          sent = true
+        end
+
         # Saves your changes made by []=, etc. to the server.
         def save()
 
